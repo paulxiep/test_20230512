@@ -5,6 +5,10 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+def connect_columns(*args, connector='|'):
+    return reduce(lambda a, b: a + b, [arg.apply(lambda x: x+connector) for arg in args[:-1]], \
+                  pd.Series(['' for _ in range(len(args[-1]))])) + args[-1]
+
 st.set_page_config(layout='wide', page_title='test_20230512')
 st.title('Test 20230512')
 
@@ -48,11 +52,16 @@ if order_file:
     q3 = order[['Supplier', 'Company', 'POAmount_THB']].groupby(['Supplier', 'Company']).sum().reset_index()
     q3['POAmount_THB'] = q3['POAmount_THB'].apply(lambda x: int(round(x)))
 
-    q4 = order[['Company', 'PartNum', 'NetAmount_THB']].groupby(['Company', 'PartNum']).sum().reset_index()
+    q4 = order[['Company', 'BuyerPartNum', 'NetAmount_THB']].groupby(['Company', 'BuyerPartNum']).sum().reset_index()
     q4['NetAmount_THB'] = q4['NetAmount_THB'].apply(lambda x: int(round(x)))
 
-    q8 = order[['Company', 'Supplier', 'PartNum', 'POAmount_THB']].groupby(
-        ['Company', 'Supplier', 'PartNum']).sum().reset_index()
+    q8 = order[['Company', 'Supplier', 'BuyerPartNum', 'POAmount_THB']].groupby(
+        ['Company', 'Supplier', 'BuyerPartNum']).sum().sort_values('POAmount_THB').reset_index()
+    q8['POAmount_THB'] = q8['POAmount_THB'].apply(lambda x: int(round(x)))
+    q8['Buyer'] = q8['Company'].apply(lambda x: 'Buyer: ' + x)
+    q8['Supplier'] = q8['Supplier'].apply(lambda x: 'Supplier: ' + x)
+    q8['BuyerPartNum'] = q8['BuyerPartNum'].apply(lambda x: 'BuyerPartNum: ' + x)
+    q8['All'] = ['All' for _ in range(len(q8.index))]
 
     tabs = st.tabs(list(map(lambda x: f'Q{x}', range(1, 9))))
     columns = {}
@@ -102,12 +111,12 @@ if order_file:
             with columns[f'{4}-{buyer}-{1}']:
                 st.dataframe(
                     q4[q4['Company'] == buyer].sort_values('NetAmount_THB', ascending=False).head(10).set_index(
-                        'PartNum').drop('Company', axis=1))
+                        'BuyerPartNum').drop('Company', axis=1))
             with columns[f'{4}-{buyer}-{2}']:
                 st.plotly_chart(px.pie(
                     q4[q4['Company'] == buyer].sort_values('NetAmount_THB', ascending=False).head(10).drop('Company',
                                                                                                            axis=1),
-                    values='NetAmount_THB', names='PartNum', title=f'Purchases of company {buyer} by part number (THB)'),
+                    values='NetAmount_THB', names='BuyerPartNum', title=f'Purchases of company {buyer} by buyer part number (THB)'),
                                 use_container_width=True)
 
     if contract_file:
@@ -133,7 +142,7 @@ if order_file:
         with tabs[4]:
             st.subheader('Q5')
             st.text('จงหารหัสรายการสินค้าที่ยังไม่หมดสัญญาซื้อขายโดยยึดจากวันที่ 31 พค 2021')
-            st.text('(based on PartNum, not BuyerPartNum, null value removed)')
+            st.text('(based on PartNum, null values removed)')
             st.markdown(
                 f'PartNum with unexpired contracts are :green[{reduce(lambda x, y: x + " and " + y, q5[pd.to_datetime(q5["ExpiredDate"]) > datetime.datetime(2021, 5, 21, 7)]["PartNum"].unique().tolist())}].')
 
@@ -161,3 +170,15 @@ if order_file:
 
         with tabs[7]:
             st.subheader('Q8')
+            st.text('จงออกแบบ Dashboard สำหรับผู้บริหารโดยเน้นที่การดูความสัมพันธ์ระหว่างผู้ซื้อ-ขายและรายการสินค้า')
+            columns[f'{8}-{1}'], columns[f'{8}-{2}'] = st.columns([1, 2])
+            with columns[f'{8}-{1}']:
+                tiers = ['All'] + st.multiselect('Select display order of Company-Supplier-BuyerPartNum', ['Buyer', 'Supplier', 'BuyerPartNum'], default=['Supplier', 'Buyer'])
+                excludes = [st.multiselect(f'Exclude from {tiers[i]}', q8[tiers[i]].unique(), default=[]) for i in range(1, len(tiers))]
+                for i in range(len(excludes)):
+                    for j in excludes[i]:
+                        q8 = q8[q8[tiers[i+1]]!=j]
+            with columns[f'{8}-{2}']:
+                st.plotly_chart(px.sunburst(q8,
+                    path=tiers, values='POAmount_THB', color=tiers[-1], title=f'Tiered sunburst chart of total PO values of {"-".join(tiers[1:])}', width=600, height=600),
+                    use_container_width=True)
