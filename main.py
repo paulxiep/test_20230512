@@ -5,9 +5,25 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-def connect_columns(*args, connector='|'):
-    return reduce(lambda a, b: a + b, [arg.apply(lambda x: x+connector) for arg in args[:-1]], \
-                  pd.Series(['' for _ in range(len(args[-1]))])) + args[-1]
+ex_in_swap = {'Inclusive': 'Exclude from', 'Exclusive': 'Include into'}
+
+@st.cache_data
+def get_order_data(order_file):
+    order = pd.read_excel(order_file, dtype=str)
+    order['Supplier'] = order['Supplier'].astype(str)
+    order['Company'] = order['Company'].astype(str)
+    order['NetAmount_THB'] = order['NetAmount_THB'].apply(float)
+    order['POAmount_THB'] = order['POAmount_THB'].apply(float)
+    order['UnitPrice'] = order['UnitPrice'].apply(float)
+    return order
+
+@st.cache_data
+def get_contract_data(contract_file):
+    contract = pd.read_excel(contract_file, dtype=str)
+    contract['ScaleQty'] = contract['ScaleQty'].apply(float)
+    contract['UnitPrice'] = contract['UnitPrice'].apply(float)
+    contract['Differentiate'] = contract['Differentiate'].apply(float)
+    return contract
 
 st.set_page_config(layout='wide', page_title='test_20230512')
 st.title('Test 20230512')
@@ -17,12 +33,7 @@ with st.sidebar:
     contract_file = st.file_uploader('Upload ข้อมูลสัญญาซื้อขาย.xlsx')
 
 if order_file:
-    order = pd.read_excel(order_file, dtype=str)
-    order['Supplier'] = order['Supplier'].astype(str)
-    order['Company'] = order['Company'].astype(str)
-    order['NetAmount_THB'] = order['NetAmount_THB'].apply(float)
-    order['POAmount_THB'] = order['POAmount_THB'].apply(float)
-    order['UnitPrice'] = order['UnitPrice'].apply(float)
+    order = get_order_data(order_file)
 
     with st.expander('Assumption to resolve ambiguity in data table (please click to expand)'):
         st.text('See the following subset from order table')
@@ -120,10 +131,7 @@ if order_file:
                                 use_container_width=True)
 
     if contract_file:
-        contract = pd.read_excel(contract_file, dtype=str)
-        contract['ScaleQty'] = contract['ScaleQty'].apply(float)
-        contract['UnitPrice'] = contract['UnitPrice'].apply(float)
-        contract['Differentiate'] = contract['Differentiate'].apply(float)
+        contract = get_contract_data(contract_file)
 
         q5 = pd.merge(contract[['CPMNum', 'ExpiredDate']], order[['ContactNo', 'PartNum']], how='inner',
                       left_on='CPMNum', right_on='ContactNo').dropna(axis=0)
@@ -174,11 +182,18 @@ if order_file:
             columns[f'{8}-{1}'], columns[f'{8}-{2}'] = st.columns([1, 2])
             with columns[f'{8}-{1}']:
                 tiers = ['All'] + st.multiselect('Select display order of Company-Supplier-BuyerPartNum', ['Buyer', 'Supplier', 'BuyerPartNum'], default=['Supplier', 'Buyer'])
-                excludes = [st.multiselect(f'Exclude from {tiers[i]}', q8[tiers[i]].unique(), default=[]) for i in range(1, len(tiers))]
-                for i in range(len(excludes)):
-                    for j in excludes[i]:
-                        q8 = q8[q8[tiers[i+1]]!=j]
+                ex_in = []
+                selection = []
+                for i in range(1, len(tiers)):
+                    ex_in.append(st.radio(f'Select default mode for {tiers[i]}', ['Inclusive', 'Exclusive'], key=tiers[i]))
+                    selection.append(st.multiselect(f'{ex_in_swap[ex_in[i-1]]} from {tiers[i]}', q8[tiers[i]].unique(), default=[]))
+                    if ex_in[i-1] == 'Inclusive':
+                        if len(selection[i-1]) > 0:
+                            q8 = q8[reduce(lambda x, y: x & y, [q8[tiers[i]]!=j for j in selection[i-1]])]
+                    else:
+                        if len(selection[i-1]) > 0:
+                            q8 = q8[reduce(lambda x, y: x | y, [q8[tiers[i]]==j for j in selection[i-1]])]
             with columns[f'{8}-{2}']:
                 st.plotly_chart(px.sunburst(q8,
-                    path=tiers, values='POAmount_THB', color=tiers[-1], title=f'Tiered sunburst chart of total PO values of {"-".join(tiers[1:])}', width=600, height=600),
+                    path=tiers, values='POAmount_THB', color=tiers[-1], title=f'Tiered sunburst chart of total PO values of {"-".join(tiers[1:])}<br>(interactive - click any inner layer to focus, hover mouse over for PO value)', width=600, height=600),
                     use_container_width=True)
