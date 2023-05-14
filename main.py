@@ -186,7 +186,7 @@ if order_file:
                 selection = []
                 for i in range(1, len(tiers)):
                     ex_in.append(st.radio(f'Select default mode for {tiers[i]}', ['Inclusive', 'Exclusive'], key=tiers[i]))
-                    selection.append(st.multiselect(f'{ex_in_swap[ex_in[i-1]]} from {tiers[i]}', q8[tiers[i]].unique(), default=[]))
+                    selection.append(st.multiselect(f'{ex_in_swap[ex_in[i-1]]} {tiers[i]}', q8[tiers[i]].unique(), default=[]))
                     if ex_in[i-1] == 'Inclusive':
                         if len(selection[i-1]) > 0:
                             q8 = q8[reduce(lambda x, y: x & y, [q8[tiers[i]]!=j for j in selection[i-1]])]
