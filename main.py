@@ -60,28 +60,28 @@ if order_file:
     with tabs[0]:
         st.subheader('Q1')
         st.text('จงหา Top 10 ของบริษัทที่มีมูลค่าซื้อสูงที่สุด')
-        columns[f'{1}-{1}'], columns[f'{1}-{2}'] = st.columns(2)
+        columns[f'{1}-{1}'], columns[f'{1}-{2}'] = st.columns([1, 2])
         with columns[f'{1}-{1}']:
             st.dataframe(q1.head(10).set_index('Company'))
         with columns[f'{1}-{2}']:
-            st.plotly_chart(px.bar(q1.head(10), x='Company', y='NetAmount_THB').update_xaxes(type='category').update_yaxes(type='log'), use_container_width=True)
+            st.plotly_chart(px.bar(q1.head(10), title='Log scale of net purchase amount', x='Company', y='NetAmount_THB').update_xaxes(type='category').update_yaxes(type='log'), use_container_width=True)
 
 
     with tabs[1]:
         st.subheader('Q2')
         st.text('จงหา Top 10 ของผู้ขายที่มีมูลค่าการขายที่สูงที่สุด')
-        columns[f'{2}-{1}'], columns[f'{2}-{2}'] = st.columns(2)
+        columns[f'{2}-{1}'], columns[f'{2}-{2}'] = st.columns([1, 2])
         with columns[f'{2}-{1}']:
             st.dataframe(q2.head(10).set_index('Supplier'))
         with columns[f'{2}-{2}']:
-            st.plotly_chart(px.bar(q2.head(10), x='Supplier', y='POAmount_THB').update_xaxes(type='category'), use_container_width=True)
+            st.plotly_chart(px.bar(q2.head(10), title='Net sale amount', x='Supplier', y='POAmount_THB').update_xaxes(type='category'), use_container_width=True)
 
     with tabs[2]:
         st.subheader('Q3')
         st.text('จงหาว่าในแต่ละผู้ขาย ขายให้บริษัทใดบ้างโดยเรียงตามมูลค่าจากมากไปน้อย')
         for supplier in q2['Supplier']:
             st.text(f'Supplier: {supplier}')
-            columns[f'{3}-{supplier}-{1}'], columns[f'{3}-{supplier}-{2}'] = st.columns(2)
+            columns[f'{3}-{supplier}-{1}'], columns[f'{3}-{supplier}-{2}'] = st.columns([1, 2])
             with columns[f'{3}-{supplier}-{1}']:
                 st.dataframe(
                     q3[q3['Supplier'] == supplier].sort_values('POAmount_THB', ascending=False).set_index('Company').drop(
@@ -98,7 +98,7 @@ if order_file:
         st.text('จงหาว่าบริษัทแต่ละราย ซื้อรายการสินค้าใดมากที่สุด 10 อันดับแรก')
         for buyer in q1['Company']:
             st.text(f'Company (Buyer): {buyer}')
-            columns[f'{4}-{buyer}-{1}'], columns[f'{4}-{buyer}-{2}'] = st.columns(2)
+            columns[f'{4}-{buyer}-{1}'], columns[f'{4}-{buyer}-{2}'] = st.columns([1, 2])
             with columns[f'{4}-{buyer}-{1}']:
                 st.dataframe(
                     q4[q4['Company'] == buyer].sort_values('NetAmount_THB', ascending=False).head(10).set_index(
@@ -161,4 +161,3 @@ if order_file:
 
         with tabs[7]:
             st.subheader('Q8')
-            st.dataframe(q8)
