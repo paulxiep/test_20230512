@@ -181,7 +181,7 @@ if order_file:
             st.text('จงออกแบบ Dashboard สำหรับผู้บริหารโดยเน้นที่การดูความสัมพันธ์ระหว่างผู้ซื้อ-ขายและรายการสินค้า')
             columns[f'{8}-{1}'], columns[f'{8}-{2}'] = st.columns([1, 2])
             with columns[f'{8}-{1}']:
-                tiers = ['All'] + st.multiselect('Select display order of Company-Supplier-BuyerPartNum', ['Buyer', 'Supplier', 'BuyerPartNum'], default=['Supplier', 'Buyer'])
+                tiers = ['All'] + st.multiselect('Select display order of Buyer-Supplier-BuyerPartNum', ['Buyer', 'Supplier', 'BuyerPartNum'], default=['Supplier', 'Buyer'])
                 ex_in = []
                 selection = []
                 for i in range(1, len(tiers)):
