@@ -15,7 +15,8 @@ if order_file:
     st.subheader('Clarifications')
     st.text('Ambiguous data: look at the following subset from order table')
     temp = order[['ItemDescription', 'ReceivedQty',
-                  'RemainQty', 'ReceivedAmount_THB', 'RemainAmount_THB', 'ContactNo']]
+                  'RemainQty', 'ReceivedAmount_THB', 'RemainAmount_THB',
+                  'POAmount_THB', 'ContactNo']]
     temp = temp[temp['ContactNo'].notna()]
     st.dataframe(temp.loc[[2512, 2950, 3060, 3377]])
     st.markdown(
@@ -76,9 +77,37 @@ if order_file:
         q5 = pd.merge(contract[['CPMNum', 'ExpiredDate']], order[['ContactNo', 'PartNum']], how='inner',
                       left_on='CPMNum', right_on='ContactNo').dropna(axis=0)
 
+        contract['ContractBuyerPartNum'] = contract['CPMNum'].astype(str).apply(lambda x: x + '-') + contract['MatCode']
+        order['ContractBuyerPartNum'] = order['ContactNo'].astype(str).apply(lambda x: x + '-') + order['BuyerPartNum']
+
+        q6 = pd.merge(contract[['ContractBuyerPartNum', 'UnitPrice', 'Differentiate', 'MinOrder']],
+                      order[['ContractBuyerPartNum', 'UnitPrice', 'ReceivedQty',
+                             'RemainQty', 'ReceiveStatus', 'ReceivedAmount_THB', 'RemainAmount_THB', 'POAmount_THB',
+                             'Company', 'Supplier']], how='outer', left_on='ContractBuyerPartNum',
+                      right_on='ContractBuyerPartNum')
+
+        q7 = q6[q6['UnitPrice_x'].notna() & q6['UnitPrice_y'].notna()]
+
         with tabs[4]:
             st.subheader('Q5')
             st.text('จงหารหัสรายการสินค้าที่ยังไม่หมดสัญญาซื้อขายโดยยึดจากวันที่ 31 พค 2021')
             st.text('(based on PartNum, not BuyerPartNum, null value removed)')
             st.json(
                 q5[pd.to_datetime(q5['ExpiredDate']) > datetime.datetime(2021, 5, 21, 7)]['PartNum'].unique().tolist())
+
+        with tabs[5]:
+            st.subheader('Q6')
+            st.text('จงเปรียบเทียบรายการสินค้าในใบสั่งซื้อว่าตรงกับในสัญญาหรือไม่')
+            st.markdown('''Since there seems to be no information on contracts table on how many items are actually procured,
+                        \n\nwe'll adhere all the more to the initial assumption that all indices are unrelated entries''')
+            st.text('Based on the outer join between contract and orders by the Contract No:')
+            st.text(f"Total indexes of the joined table is {len(q6.index)}.")
+            st.text(f"Of this, {len(q6[q6['UnitPrice_x'].notna() & q6['UnitPrice_y'].notna()].index)} POs exist in the contracts table.")
+            st.text(f"{len(q6[q6['UnitPrice_x'].notna() & q6['UnitPrice_y'].isna()].index)} ContractNo-BuyerPartNum has not corresponding PO in order table.")
+            st.text(f"{len(q6[q6['UnitPrice_x'].isna() & q6['UnitPrice_y'].notna()].index)} POs have null contract entries.")
+
+        with tabs[6]:
+            st.subheader('Q7')
+            st.text('จากข้อ 6 รายการสินค้าที่ราคาไม่ตรงกับสัญญาคิดเป็นมูลค่าเท่าใด')
+            st.text(f"Out of total value of ~{int(order['POAmount_THB'].sum()//1000000)} M of POAmount of POs in order table,")
+            st.text(f"~{int(q7[q7['UnitPrice_x']!=q7['UnitPrice_y']]['POAmount_THB'].sum()//1000000)} M has UnitPrices that differ between contract and actual orders")
