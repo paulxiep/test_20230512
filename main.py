@@ -7,6 +7,7 @@ import streamlit as st
 
 ex_in_swap = {'Inclusive': 'Exclude from', 'Exclusive': 'Include into'}
 
+
 @st.cache_data
 def get_order_data(order_file):
     order = pd.read_excel(order_file, dtype=str)
@@ -17,6 +18,7 @@ def get_order_data(order_file):
     order['UnitPrice'] = order['UnitPrice'].apply(float)
     return order
 
+
 @st.cache_data
 def get_contract_data(contract_file):
     contract = pd.read_excel(contract_file, dtype=str)
@@ -24,6 +26,7 @@ def get_contract_data(contract_file):
     contract['UnitPrice'] = contract['UnitPrice'].apply(float)
     contract['Differentiate'] = contract['Differentiate'].apply(float)
     return contract
+
 
 st.set_page_config(layout='wide', page_title='test_20230512')
 st.title('Test 20230512')
@@ -54,10 +57,12 @@ if order_file:
             \n\na simple assumption will be made that all rows are separate lots of items.
             \n\nThis assumption is so that something can be done, and we\'ll adhere to it for all questions answered here.''')
 
-    q1 = order[['Company', 'NetAmount_THB']].groupby('Company').sum().sort_values('NetAmount_THB', ascending=False).reset_index()
+    q1 = order[['Company', 'NetAmount_THB']].groupby('Company').sum().sort_values('NetAmount_THB',
+                                                                                  ascending=False).reset_index()
     q1['NetAmount_THB'] = q1['NetAmount_THB'].apply(lambda x: int(round(x)))
 
-    q2 = order[['Supplier', 'POAmount_THB']].groupby('Supplier').sum().sort_values('POAmount_THB', ascending=False).reset_index()
+    q2 = order[['Supplier', 'POAmount_THB']].groupby('Supplier').sum().sort_values('POAmount_THB',
+                                                                                   ascending=False).reset_index()
     q2['POAmount_THB'] = q2['POAmount_THB'].apply(lambda x: int(round(x)))
 
     q3 = order[['Supplier', 'Company', 'POAmount_THB']].groupby(['Supplier', 'Company']).sum().reset_index()
@@ -84,8 +89,9 @@ if order_file:
         with columns[f'{1}-{1}']:
             st.dataframe(q1.head(10).set_index('Company'))
         with columns[f'{1}-{2}']:
-            st.plotly_chart(px.bar(q1.head(10), title='Log scale of net purchase amount', x='Company', y='NetAmount_THB').update_xaxes(type='category').update_yaxes(type='log'), use_container_width=True)
-
+            st.plotly_chart(px.bar(q1.head(10), title='Log scale of net purchase amount', x='Company',
+                                   y='NetAmount_THB').update_xaxes(type='category').update_yaxes(type='log'),
+                            use_container_width=True)
 
     with tabs[1]:
         st.subheader('Q2')
@@ -94,7 +100,8 @@ if order_file:
         with columns[f'{2}-{1}']:
             st.dataframe(q2.head(10).set_index('Supplier'))
         with columns[f'{2}-{2}']:
-            st.plotly_chart(px.bar(q2.head(10), title='Net sale amount', x='Supplier', y='POAmount_THB').update_xaxes(type='category'), use_container_width=True)
+            st.plotly_chart(px.bar(q2.head(10), title='Net sale amount', x='Supplier', y='POAmount_THB').update_xaxes(
+                type='category'), use_container_width=True)
 
     with tabs[2]:
         st.subheader('Q3')
@@ -104,14 +111,15 @@ if order_file:
             columns[f'{3}-{supplier}-{1}'], columns[f'{3}-{supplier}-{2}'] = st.columns([1, 2])
             with columns[f'{3}-{supplier}-{1}']:
                 st.dataframe(
-                    q3[q3['Supplier'] == supplier].sort_values('POAmount_THB', ascending=False).set_index('Company').drop(
+                    q3[q3['Supplier'] == supplier].sort_values('POAmount_THB', ascending=False).set_index(
+                        'Company').drop(
                         'Supplier', axis=1))
             with columns[f'{3}-{supplier}-{2}']:
                 st.plotly_chart(px.pie(
                     q3[q3['Supplier'] == supplier].sort_values('POAmount_THB', ascending=False).drop(
                         'Supplier', axis=1),
                     values='POAmount_THB', names='Company', title=f'Customers of {supplier} by purchase values (THB)'),
-                                use_container_width=True)
+                    use_container_width=True)
 
     with tabs[3]:
         st.subheader('Q4')
@@ -127,8 +135,9 @@ if order_file:
                 st.plotly_chart(px.pie(
                     q4[q4['Company'] == buyer].sort_values('NetAmount_THB', ascending=False).head(10).drop('Company',
                                                                                                            axis=1),
-                    values='NetAmount_THB', names='BuyerPartNum', title=f'Purchases of company {buyer} by buyer part number (THB)'),
-                                use_container_width=True)
+                    values='NetAmount_THB', names='BuyerPartNum',
+                    title=f'Purchases of company {buyer} by buyer part number (THB)'),
+                    use_container_width=True)
 
     if contract_file:
         contract = get_contract_data(contract_file)
@@ -174,26 +183,32 @@ if order_file:
             st.markdown(
                 f"Out of total value of :green[~{int(order['POAmount_THB'].sum() // 1000000)}] M of POAmount of POs in order table,")
             st.markdown(
-                f":green[~{int(q7[q7['UnitPrice_x']!=q7['UnitPrice_y']]['POAmount_THB'].sum() // 1000000)}] M has UnitPrices that differ between contract and actual orders")
+                f":green[~{int(q7[q7['UnitPrice_x'] != q7['UnitPrice_y']]['POAmount_THB'].sum() // 1000000)}] M has UnitPrices that differ between contract and actual orders")
 
         with tabs[7]:
             st.subheader('Q8')
             st.text('จงออกแบบ Dashboard สำหรับผู้บริหารโดยเน้นที่การดูความสัมพันธ์ระหว่างผู้ซื้อ-ขายและรายการสินค้า')
             columns[f'{8}-{1}'], columns[f'{8}-{2}'] = st.columns([1, 2])
             with columns[f'{8}-{1}']:
-                tiers = ['All'] + st.multiselect('Select display order of Buyer-Supplier-BuyerPartNum', ['Buyer', 'Supplier', 'BuyerPartNum'], default=['Supplier', 'Buyer'])
+                tiers = ['All'] + st.multiselect('Select display order of Buyer-Supplier-BuyerPartNum',
+                                                 ['Buyer', 'Supplier', 'BuyerPartNum'], default=['Supplier', 'Buyer'])
                 ex_in = []
                 selection = []
                 for i in range(1, len(tiers)):
-                    ex_in.append(st.radio(f'Select default mode for {tiers[i]}', ['Inclusive', 'Exclusive'], key=tiers[i]))
-                    selection.append(st.multiselect(f'{ex_in_swap[ex_in[i-1]]} {tiers[i]}', q8[tiers[i]].unique(), default=[]))
-                    if ex_in[i-1] == 'Inclusive':
-                        if len(selection[i-1]) > 0:
-                            q8 = q8[reduce(lambda x, y: x & y, [q8[tiers[i]]!=j for j in selection[i-1]])]
+                    ex_in.append(
+                        st.radio(f'Select default mode for {tiers[i]}', ['Inclusive', 'Exclusive'], key=tiers[i]))
+                    selection.append(
+                        st.multiselect(f'{ex_in_swap[ex_in[i - 1]]} {tiers[i]}', q8[tiers[i]].unique(), default=[]))
+                    if ex_in[i - 1] == 'Inclusive':
+                        if len(selection[i - 1]) > 0:
+                            q8 = q8[reduce(lambda x, y: x & y, [q8[tiers[i]] != j for j in selection[i - 1]])]
                     else:
-                        if len(selection[i-1]) > 0:
-                            q8 = q8[reduce(lambda x, y: x | y, [q8[tiers[i]]==j for j in selection[i-1]])]
+                        if len(selection[i - 1]) > 0:
+                            q8 = q8[reduce(lambda x, y: x | y, [q8[tiers[i]] == j for j in selection[i - 1]])]
             with columns[f'{8}-{2}']:
                 st.plotly_chart(px.sunburst(q8,
-                    path=tiers, values='POAmount_THB', color=tiers[-1], title=f'Tiered sunburst chart of total PO values of {"-".join(tiers[1:])}<br>(interactive - click any inner layer to focus, hover mouse over for PO value)', width=600, height=600),
-                    use_container_width=True)
+                                            path=tiers, values='POAmount_THB', color=tiers[-1],
+                                            title=f'''Tiered sunburst chart of total PO values of {"-".join(tiers[1:])}
+                                            <br>(interactive - click any inner layer to focus)''',
+                                            width=600, height=600).update_traces(textinfo="label+value", hovertemplate=''),
+                                use_container_width=True)
